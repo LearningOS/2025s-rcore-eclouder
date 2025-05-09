@@ -54,6 +54,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            syscall_counts: [0; 512],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -135,6 +136,13 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+    fn search_counts(&self,syscall_id:usize) -> isize{
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].syscall_counts[syscall_id] += 1;
+        return inner.tasks[current].syscall_counts[syscall_id]
+
+    }
 }
 
 /// Run the first task in task list.
@@ -157,7 +165,10 @@ fn mark_current_suspended() {
 fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
 }
-
+///
+pub fn search_counts(syscall_id:usize)->isize{
+    return TASK_MANAGER.search_counts(syscall_id)
+}
 /// Suspend the current 'Running' task and run the next task in task list.
 pub fn suspend_current_and_run_next() {
     mark_current_suspended();
