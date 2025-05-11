@@ -45,6 +45,8 @@ pub struct TaskManagerInner {
     tasks: [TaskControlBlock; MAX_APP_NUM],
     /// id of current `Running` task
     current_task: usize,
+
+    syscall_count: [[usize; 500]; MAX_APP_NUM],
 }
 
 lazy_static! {
@@ -54,7 +56,6 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
-            syscall_counts: [0; 512],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -66,6 +67,7 @@ lazy_static! {
                 UPSafeCell::new(TaskManagerInner {
                     tasks,
                     current_task: 0,
+                    syscall_count: [[0; 500]; MAX_APP_NUM],
                 })
             },
         }
@@ -136,12 +138,19 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
-    fn search_counts(&self,syscall_id:usize) -> isize{
+
+    /// Add syscall id for current task
+    pub fn add_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
-        inner.tasks[current].syscall_counts[syscall_id] += 1;
-        return inner.tasks[current].syscall_counts[syscall_id]
+        inner.syscall_count[current][syscall_id] += 1;
+    }
 
+    /// Return the count of syscall id for current task
+    pub fn get_syscall_count(&self, syscall_id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.syscall_count[current][syscall_id]
     }
 }
 
@@ -165,10 +174,7 @@ fn mark_current_suspended() {
 fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
 }
-///
-pub fn search_counts(syscall_id:usize)->isize{
-    return TASK_MANAGER.search_counts(syscall_id)
-}
+
 /// Suspend the current 'Running' task and run the next task in task list.
 pub fn suspend_current_and_run_next() {
     mark_current_suspended();

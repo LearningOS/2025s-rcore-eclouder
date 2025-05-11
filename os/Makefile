@@ -62,7 +62,7 @@ disasm-vim: kernel
 run: run-inner
 
 run-inner: build
-	@qemu-system-riscv64 \
+	@qemu-system-riscv64-7.0.0 \
 		-machine virt \
 		-nographic \
 		-bios $(BOOTLOADER) \
