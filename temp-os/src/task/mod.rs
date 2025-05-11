@@ -139,14 +139,14 @@ impl TaskManager {
         }
     }
 
-    ///
+    /// Add syscall id for current task
     pub fn add_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         inner.syscall_count[current][syscall_id] += 1;
     }
 
-    ///
+    /// Return the count of syscall id for current task
     pub fn get_syscall_count(&self, syscall_id: usize) -> usize {
         let inner = self.inner.exclusive_access();
         let current = inner.current_task;
