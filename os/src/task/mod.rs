@@ -80,7 +80,8 @@ impl TaskManager {
         let tasks = &mut inner.tasks[current];
         let start_va = VirtAddr::from(start);
         let end_va = VirtAddr::from(start+len);
-        tasks.memory_set.delete_map(start_va, end_va)
+        tasks.memory_set.delete_map(start_va, end_va);
+        0
     }
     pub fn mmap(&self, start: usize, len: usize, port: usize) -> isize {
         let mut inner = self.inner.exclusive_access();
@@ -99,7 +100,7 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let tasks = &mut inner.tasks[current];
-        if tasks.memory_set.is_mapped(start_va,end_va){
+        if tasks.memory_set.is_mapped(VirtAddr::from(start_va),VirtAddr::from(end_va)){
             return -1;
         };
         0
