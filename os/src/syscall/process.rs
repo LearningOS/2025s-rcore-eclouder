@@ -52,7 +52,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     trace!("kernel: sys_trace");
     let token = current_user_token();
     let phy_addr =v_addr_ptr2ppn(token,_id);
-    if (_trace_request == 1 || _trace_request == 0) && is_mapped(_id,_id) == false {
+    if (_trace_request == 1 || _trace_request == 0) && is_mapped(_id,_id) == 0 {
         return -1;
     }
     if _trace_request == 1 {
