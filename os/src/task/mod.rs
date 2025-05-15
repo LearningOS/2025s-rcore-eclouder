@@ -24,7 +24,7 @@ use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
-
+const MAX_APP_NUM:u16 = 512;
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -89,7 +89,7 @@ impl TaskManager {
         let start_va = VirtAddr::from(start);
         let end_va = VirtAddr::from(start+len);
         let permission=MapPermission::from_bits_truncate((port << 1) as u8) | MapPermission::U;
-        if(tasks.memory_set.is_mmaped(start_va,end_va)){
+        if tasks.memory_set.is_mapped(start_va,end_va){
             return -1;
         };
         tasks.memory_set.insert_framed_area(start_va, end_va, permission);
@@ -99,7 +99,7 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let tasks = &mut inner.tasks[current];
-        if(tasks.memory_set.is_mmaped(start_va,end_va)){
+        if tasks.memory_set.is_mapped(start_va,end_va){
             return -1;
         };
         0
@@ -108,7 +108,7 @@ impl TaskManager {
         let inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let tasks = &mut inner.tasks[current];
-        let v_addr = VirtAddr::new(addr);
+        let v_addr = addr.into();
         tasks.memory_set.get_vpn_permission(v_addr)
     }
     /// Run the first task in task list.
@@ -210,14 +210,14 @@ impl TaskManager {
 pub fn get_v_addr_perm(addr:usize) -> Option<MapPermission>{
     TASK_MANAGER.get_vpn_permission(addr)
 }
-pub fn syscall_mmap(start: usize, len: usize, port: usize){
+pub fn syscall_mmap(start: usize, len: usize, port: usize)->isize{
     TASK_MANAGER.mmap(start, len, port)
 }
-pub fn syscall_unmap(start:usize,len:usize){
+pub fn syscall_unmap(start:usize,len:usize) -> isize{
     TASK_MANAGER.unmap(start, len)
 }
-pub fn is_maped(v_addr_s:usize,v_addr_e:usize){
-    TaskManager.is_mapped()
+pub fn is_mapped(v_addr_s:usize,v_addr_e:usize){
+    TASK_MANAGER.is_mapped()
 }
 /// Run the first task in task list.
 pub fn run_first_task() {

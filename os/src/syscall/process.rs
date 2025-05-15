@@ -2,8 +2,11 @@
 use crate::task::{change_program_brk, exit_current_and_run_next, suspend_current_and_run_next,syscall_mmap,syscall_unmap,current_user_token};
 use crate::config::PAGE_SIZE;
 use crate::mm::page_table::v_addr_ptr2ppn;
+use crate::mm::MapPermission;
 use crate::task::is_mmaped;
 use crate::task::TASK_MANAGER;
+use crate::task::get_v_addr_perm;
+use crate::timer::get_time_us;
 #[repr(C)]
 #[derive(Debug)]
 pub struct TimeVal {
@@ -31,10 +34,10 @@ pub fn sys_yield() -> isize {
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
     let token = current_user_token();
-    let phy_addr =v_addr_ptr2ppn(token,_id);
+    let phy_addr =v_addr_ptr2ppn(token,_ts as usize);
     let us = get_time_us();
     unsafe {
-        *(phys_addr as *mut TimeVal) = TimeVal {
+        *(phy_addr as *mut TimeVal) = TimeVal {
             sec: us / 1_000_000,
             usec: us % 1_000_000,
         };
@@ -49,35 +52,34 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     trace!("kernel: sys_trace");
     let token = current_user_token();
     let phy_addr =v_addr_ptr2ppn(token,_id);
-    if (trace_request == 1 || trace_request == 0) && is_mmaped(_id,_id) == false {
+    if (_trace_request == 1 || _trace_request == 0) && is_mmaped(_id,_id) == false {
         return -1;
     }
-    if trace_request == 1 {
-        let perm = get_v_addr_perm(id);
+    if _trace_request == 1 {
+        let perm = get_v_addr_perm(_id);
         if perm.map_or(0, |p| !p.contains(MapPermission::W)) {
             return -1;
         }
     }
-    let phys_ptr = phys_addr as *mut u8;
-    match trace_request {
+    let phy_ptr = phy_addr as *mut u8;
+    match _trace_request {
         0 => {
             let value = unsafe {
-                *phys_ptr as isize
+                *phy_ptr as isize
             };
             value
         },
         1 => {
-
             unsafe {
-                *phys_ptr = data as u8;
+                *phy_ptr = _data as u8;
             };
-            0
+            return 0;
         },
         2 => {
-            TASK_MANAGER.get_syscall_count(_id) as isize
+            return TASK_MANAGER.get_syscall_count(_id) as isize;
         },
         _ => {
-            -1
+            return -1;
         },
     }
     -1
@@ -87,7 +89,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
 
-    if (_start % PAGE_SIZE != 0) &(prot & !0x7 != 0) &(prot & 0x7 = 0 ) {
+    if (_start % PAGE_SIZE != 0) &(_prot & !0x7 != 0) &(_prot & 0x7 == 0 ) {
         return -1;
     }
     syscall_mmap(_start,_len,_port);
