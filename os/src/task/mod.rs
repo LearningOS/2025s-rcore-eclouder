@@ -74,6 +74,7 @@ lazy_static! {
 }
 
 impl TaskManager {
+    ///
     pub fn unmmap(&self,start:usize,len:usize) -> isize{
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -83,6 +84,7 @@ impl TaskManager {
         tasks.memory_set.delete_map(start_va, end_va);
         0
     }
+    ///
     pub fn mmap(&self, start: usize, len: usize, port: usize) -> isize {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -96,6 +98,7 @@ impl TaskManager {
         tasks.memory_set.insert_framed_area(start_va, end_va, permission);
         0
     }
+    ///
     pub fn is_mapped(&self, start_va: usize, end_va: usize) -> isize{
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -105,6 +108,7 @@ impl TaskManager {
         };
         0
     }
+    ///
     fn get_vpn_permission(&self,addr:usize) -> Option<MapPermission>{
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -208,15 +212,19 @@ impl TaskManager {
         inner.syscall_count[current][syscall_id]
     }
 }
+///
 pub fn get_v_addr_perm(addr:usize) -> Option<MapPermission>{
     TASK_MANAGER.get_vpn_permission(addr)
 }
+///
 pub fn syscall_mmap(start: usize, len: usize, port: usize)->isize{
     TASK_MANAGER.mmap(start, len, port)
 }
+///
 pub fn syscall_unmap(start:usize,len:usize) -> isize{
     TASK_MANAGER.unmmap(start, len)
 }
+///
 pub fn is_mapped(v_addr_s:usize,v_addr_e:usize) -> isize{
     TASK_MANAGER.is_mapped(v_addr_s,v_addr_e)
 }
