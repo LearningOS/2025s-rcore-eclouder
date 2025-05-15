@@ -24,7 +24,7 @@ use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
-const MAX_APP_NUM:u16 = 512;
+const MAX_APP_NUM:usize = 512;
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
@@ -80,7 +80,7 @@ impl TaskManager {
         let tasks = &mut inner.tasks[current];
         let start_va = VirtAddr::from(start);
         let end_va = VirtAddr::from(start+len);
-        tasks.memory_set.delete_map(start_va, end_va);
+        tasks.memory_set.delete_map(start_va, end_va)
     }
     pub fn mmap(&self, start: usize, len: usize, port: usize) -> isize {
         let mut inner = self.inner.exclusive_access();
@@ -95,7 +95,7 @@ impl TaskManager {
         tasks.memory_set.insert_framed_area(start_va, end_va, permission);
         0
     }
-    pub fn is_mapped(&self, start: usize, len: usize) -> isize{
+    pub fn is_mapped(&self, start_va: usize, end_va: usize) -> isize{
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let tasks = &mut inner.tasks[current];
@@ -105,7 +105,7 @@ impl TaskManager {
         0
     }
     fn get_vpn_permission(&self,addr:usize) -> Option<MapPermission>{
-        let inner = self.inner.exclusive_access();
+        let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         let tasks = &mut inner.tasks[current];
         let v_addr = addr.into();
@@ -214,10 +214,10 @@ pub fn syscall_mmap(start: usize, len: usize, port: usize)->isize{
     TASK_MANAGER.mmap(start, len, port)
 }
 pub fn syscall_unmap(start:usize,len:usize) -> isize{
-    TASK_MANAGER.unmap(start, len)
+    TASK_MANAGER.unmmap(start, len)
 }
-pub fn is_mapped(v_addr_s:usize,v_addr_e:usize){
-    TASK_MANAGER.is_mapped()
+pub fn is_mapped(v_addr_s:usize,v_addr_e:usize) -> isize{
+    TASK_MANAGER.is_mapped(v_addr_s,v_addr_e)
 }
 /// Run the first task in task list.
 pub fn run_first_task() {

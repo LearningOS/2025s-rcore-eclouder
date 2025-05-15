@@ -57,7 +57,7 @@ impl MemorySet {
             |v|{
                 let start = v.vpn_range.get_start();
                 let end = v.vpn_range.get_end();
-                v >= start && v <end
+                vpn >= start && vpn <end
             }
         ).map(|v|v.map_perm)
     }

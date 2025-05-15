@@ -3,7 +3,7 @@ use crate::task::{change_program_brk, exit_current_and_run_next, suspend_current
 use crate::config::PAGE_SIZE;
 use crate::mm::page_table::v_addr_ptr2ppn;
 use crate::mm::MapPermission;
-use crate::task::is_mmaped;
+use crate::task::is_mapped;
 use crate::task::TASK_MANAGER;
 use crate::task::get_v_addr_perm;
 use crate::timer::get_time_us;
@@ -57,7 +57,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     }
     if _trace_request == 1 {
         let perm = get_v_addr_perm(_id);
-        if perm.map_or(0, |p| !p.contains(MapPermission::W)) {
+        if perm.map_or(true, |p| !p.contains(MapPermission::W)) {
             return -1;
         }
     }
@@ -67,7 +67,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
             let value = unsafe {
                 *phy_ptr as isize
             };
-            value
+            return value;
         },
         1 => {
             unsafe {
@@ -89,10 +89,10 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
 
-    if (_start % PAGE_SIZE != 0) &(_prot & !0x7 != 0) &(_prot & 0x7 == 0 ) {
+    if (_start % PAGE_SIZE != 0) &(_port & !0x7 != 0) &(_port & 0x7 == 0 ) {
         return -1;
     }
-    syscall_mmap(_start,_len,_port);
+    syscall_mmap(_start,_len,_port)
 
 }
 
