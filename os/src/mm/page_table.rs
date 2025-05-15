@@ -156,7 +156,18 @@ impl PageTable {
         8usize << 60 | self.root_ppn.0
     }
 }
-
+pub fn v_addr_ptr2ppn(token:usize,v_addr_ptr:usize){
+    let page_table = PageTable.from_token(token);
+    let v_addr:VirtAddr = v_addr_ptr.into();
+    let off_addr = v_addr.page_offset();
+    let vpn = v_addr.floor();
+    let ppn = match page_table.translate(vpn) {
+        Some(pte) => pte.ppn(),
+        None => return 0,
+    };
+    let phy_addr = ppn.0 << 12 | off_addr;
+    phy_addr
+}
 /// Translate&Copy a ptr[u8] array with LENGTH len to a mutable u8 Vec through page table
 pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);

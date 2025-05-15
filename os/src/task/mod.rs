@@ -13,6 +13,7 @@ mod context;
 mod switch;
 #[allow(clippy::module_inception)]
 mod task;
+use crate::mm::{MapPermission, VirtAddr};
 
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
@@ -46,6 +47,7 @@ struct TaskManagerInner {
     tasks: Vec<TaskControlBlock>,
     /// id of current `Running` task
     current_task: usize,
+    syscall_count: [[usize; 512]; MAX_APP_NUM],
 }
 
 lazy_static! {
@@ -64,6 +66,7 @@ lazy_static! {
                 UPSafeCell::new(TaskManagerInner {
                     tasks,
                     current_task: 0,
+                    syscall_count: [[0; 512]; MAX_APP_NUM],
                 })
             },
         }
@@ -71,6 +74,43 @@ lazy_static! {
 }
 
 impl TaskManager {
+    pub fn unmmap(&self,start:usize,len:usize) -> isize{
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let tasks = &mut inner.tasks[current];
+        let start_va = VirtAddr::from(start);
+        let end_va = VirtAddr::from(start+len);
+        tasks.memory_set.delete_map(start_va, end_va);
+    }
+    pub fn mmap(&self, start: usize, len: usize, port: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let tasks = &mut inner.tasks[current];
+        let start_va = VirtAddr::from(start);
+        let end_va = VirtAddr::from(start+len);
+        let permission=MapPermission::from_bits_truncate((port << 1) as u8) | MapPermission::U;
+        if(tasks.memory_set.is_mmaped(start_va,end_va)){
+            return -1;
+        };
+        tasks.memory_set.insert_framed_area(start_va, end_va, permission);
+        0
+    }
+    pub fn is_mapped(&self, start: usize, len: usize) -> isize{
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let tasks = &mut inner.tasks[current];
+        if(tasks.memory_set.is_mmaped(start_va,end_va)){
+            return -1;
+        };
+        0
+    }
+    fn get_vpn_permission(&self,addr:usize) -> Option<MapPermission>{
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let tasks = &mut inner.tasks[current];
+        let v_addr = VirtAddr::new(addr);
+        tasks.memory_set.get_vpn_permission(v_addr)
+    }
     /// Run the first task in task list.
     ///
     /// Generally, the first task in task list is an idle task (we call it zero process later).
@@ -153,8 +193,32 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
-}
+    ///
+    pub fn add_syscall_count(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.syscall_count[current][syscall_id] += 1;
+    }
 
+    ///
+    pub fn get_syscall_count(&self, syscall_id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.syscall_count[current][syscall_id]
+    }
+}
+pub fn get_v_addr_perm(addr:usize) -> Option<MapPermission>{
+    TASK_MANAGER.get_vpn_permission(addr)
+}
+pub fn syscall_mmap(start: usize, len: usize, port: usize){
+    TASK_MANAGER.mmap(start, len, port)
+}
+pub fn syscall_unmap(start:usize,len:usize){
+    TASK_MANAGER.unmap(start, len)
+}
+pub fn is_maped(v_addr_s:usize,v_addr_e:usize){
+    TaskManager.is_mapped()
+}
 /// Run the first task in task list.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();

@@ -40,6 +40,27 @@ pub struct MemorySet {
 }
 
 impl MemorySet {
+    ///
+
+    ///
+    pub fn is_mapped(&self,start_vaddr:VirtAddr,end_vaddr:VirtAddr){
+        let start_va = start_vaddr.floor();
+        let end_va = end_vaddr.ceil();
+        self.areas.iter().any(
+            |area| (start_vaddr < area.vpn_range.get_start()) && (end_vaddr > area.vpn_range.get_end())
+        )
+    }
+    ///
+    pub fn get_vpn_permission(&self,addr:VirtAddr) -> Option<MapPermission>{
+        let vpn = addr.floor();
+        self.areas.iter().find(
+            |v|{
+                let start = v.vpn_range.get_start();
+                let end = v.vpn_range.get_end();
+                target_vpn >= start && target_vpn <end
+            }
+        ).map(|v|v.map_perm);
+    }
     /// Create a new empty `MemorySet`.
     pub fn new_bare() -> Self {
         Self {
@@ -50,6 +71,22 @@ impl MemorySet {
     /// Get the page table token
     pub fn token(&self) -> usize {
         self.page_table.token()
+    }
+    ///
+    pub fn delete_map(&self,start_va: VirtAddr,
+                      end_va: VirtAddr){
+        let start_va = start_va.floor();
+        let end_va = end_va.ceil();
+        let area_idx = self.areas.iter_mut().position(
+            |area|{
+                start_va == area.vpn_range.get_start()
+                && end_va == area.vpn_range.get_end()
+            }
+        );
+        if let Some(area_idx) = area_idx{
+            self.areas[area_idx].unmap(&mut self.page_table);
+            self.areas.remove(area_idx);
+        }
     }
     /// Assume that no conflicts.
     pub fn insert_framed_area(
