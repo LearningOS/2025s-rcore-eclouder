@@ -41,13 +41,20 @@ pub struct MemorySet {
 
 impl MemorySet {
     ///
-
+    pub fn is_contain(&self,addr:VirtAddr) -> bool{
+        let vpn = addr.floor();
+        self.areas.iter().any(
+            |area| {
+                return (vpn >= area.vpn_range.get_start()) && (vpn < area.vpn_range.get_end());
+            }
+        )
+    }
     ///
     pub fn is_mapped(&self,start_vaddr:VirtAddr,end_vaddr:VirtAddr) -> bool{
         let start_va = start_vaddr.floor();
         let end_va = end_vaddr.ceil();
         self.areas.iter().any(
-            |area| (start_va < area.vpn_range.get_start()) && (end_va > area.vpn_range.get_end())
+            |area| (start_va < area.vpn_range.get_end()) && (end_va > area.vpn_range.get_start())
         )
     }
     ///

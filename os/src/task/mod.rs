@@ -109,6 +109,13 @@ impl TaskManager {
         0
     }
     ///
+    pub fn is_contain(&self, start_va: usize) -> bool{
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let tasks = &mut inner.tasks[current];
+        tasks.memory_set.is_contain(VirtAddr::from(start_va))
+    }
+    ///
     fn get_vpn_permission(&self,addr:usize) -> Option<MapPermission>{
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
@@ -202,6 +209,7 @@ impl TaskManager {
     pub fn add_syscall_count(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
+        // println!("call_id:{}",syscall_id);
         inner.syscall_count[current][syscall_id] += 1;
     }
 
@@ -211,6 +219,10 @@ impl TaskManager {
         let current = inner.current_task;
         inner.syscall_count[current][syscall_id]
     }
+}
+///
+pub fn add_syscall_count(syscall_id:usize){
+    TASK_MANAGER.add_syscall_count(syscall_id);
 }
 ///
 pub fn get_v_addr_perm(addr:usize) -> Option<MapPermission>{
@@ -227,6 +239,10 @@ pub fn syscall_unmap(start:usize,len:usize) -> isize{
 ///
 pub fn is_mapped(v_addr_s:usize,v_addr_e:usize) -> isize{
     TASK_MANAGER.is_mapped(v_addr_s,v_addr_e)
+}
+///
+pub fn is_contain(v_addr_s:usize) -> bool{
+    TASK_MANAGER.is_contain(v_addr_s)
 }
 /// Run the first task in task list.
 pub fn run_first_task() {

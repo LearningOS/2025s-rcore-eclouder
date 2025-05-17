@@ -3,10 +3,13 @@ use crate::task::{change_program_brk, exit_current_and_run_next, suspend_current
 use crate::config::PAGE_SIZE;
 use crate::mm::page_table::v_addr_ptr2ppn;
 use crate::mm::MapPermission;
-use crate::task::is_mapped;
+// use crate::task::is_mapped;
 use crate::task::TASK_MANAGER;
 use crate::task::get_v_addr_perm;
+use crate::task::is_contain;
 use crate::timer::get_time_us;
+use crate::mm::VirtAddr;
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct TimeVal {
@@ -52,7 +55,7 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
     trace!("kernel: sys_trace");
     let token = current_user_token();
     let phy_addr =v_addr_ptr2ppn(token,_id);
-    if (_trace_request == 1 || _trace_request == 0) && is_mapped(_id,_id) == 0 {
+    if (_trace_request == 1 || _trace_request == 0) && is_contain(_id) == false {
         return -1;
     }
     if _trace_request == 1 {
@@ -89,9 +92,13 @@ pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
 
-    if (_start % PAGE_SIZE != 0) &(_port & !0x7 != 0) &(_port & 0x7 == 0 ) {
+
+    if (_start % PAGE_SIZE != 0) |(_port & !0x7 != 0) |(_port & 0x7 == 0 )|(_len ==  0) {
         return -1;
     }
+    println!( "_start_addr{}",_start);
+    println!( "called!!");
+
     syscall_mmap(_start,_len,_port)
 
 }
@@ -99,6 +106,12 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
+    let start_vaddr:VirtAddr = _start.into();
+    let end_vaddr:VirtAddr = (_start + _len).into();
+
+    if (_start % PAGE_SIZE != 0) |(_len ==  0)|(!start_vaddr.aligned())|(!end_vaddr.aligned()) {
+        return -1;
+    }
     syscall_unmap(_start,_len)
 
 }
